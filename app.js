@@ -15,12 +15,6 @@ app.use(bodyParser.json());
 // Use cors
 app.use(cors());
 
-// Connect to our MongoDB
-//mongoose.connect("mongodb://localhost:27017/tinydb", {
-//  useNewUrlParser: true,
-//  useUnifiedTopology: true,
-//});
-
 mongoose.connect(
   "mongodb+srv://projecttiny:hellohellohello@cluster0.jrz7x.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",
   {
