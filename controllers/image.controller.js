@@ -1,15 +1,22 @@
 const cloudinary = require("../plugin/cloudinary");
 
+/**
+ * ImageController - this is a class that is used to upload/download files from Cloudinary
+ * it consist of uploadImage and getImage functions
+ */
 class ImageController {
-  constructor() {}
-
-  // UPLOAD IMAGE
+  /**
+   * uploadImage - function to call if uploading an image file to Cloudinary
+   * returns - response obj { success, error }
+   * success - true if successfull in uploading the image from Cloudinary
+   * success - false if failed in uploading the image from Cloudinary
+   */
   async uploadImage(req, res) {
     try {
       // VALIDATION
       console.log(req.file);
       if (!req.file) {
-        return res.status(402).json({
+        return res.status(500).json({
           success: false,
           message: "Please select an image",
         });
@@ -19,9 +26,7 @@ class ImageController {
       console.log(upload);
 
       if (!upload) {
-        console.log("upload false");
-
-        return res.status(400).json({
+        return res.status(500).json({
           success: false,
           message: "Error uploading image",
         });
@@ -40,36 +45,39 @@ class ImageController {
         });
       }
     } catch (error) {
-      console.log("catch error!");
-
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
         message: error.message,
       });
     }
   }
 
-  // GET IMAGE
+  /**
+   * getImage - function to call for downloading images from Cloudinary
+   * returns - response obj { success, error }
+   * success - true if successfull in getting the image from Cloudinary
+   * success - false if failed in getting the image from Cloudinary
+   */
   async getImage(req, res) {
     try {
       const publicId = req.params.publicId;
 
       cloudinary.v2.api.resource(publicId, function (error, result) {
         if (error) {
-          return res.status(400).json({
+          return res.status(500).json({
             success: false,
             message: "Error getting image",
           });
         }
 
-        return res.json({
+        return res.status(200).json({
           success: true,
           message: "Success getting image",
           data: result,
         });
       });
     } catch (error) {
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
         message: error.message,
       });

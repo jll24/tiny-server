@@ -1,7 +1,7 @@
 // ALL CRUD functionalities related to Story
 const router = require("express").Router();
 const StoryModel = require("../models/story");
-const user = require("../models/user");
+const UserModel = require("../models/user");
 
 const { check, validationResult } = require("express-validator");
 
@@ -50,32 +50,44 @@ const getStoryFiltered = (response) => {
       photo: userid.photo,
       aboutme: userid.aboutme,
       followers: userid.followers,
+      following: userid.following,
     },
   };
 };
 
-// GET ALL
+/**
+ * Route to get ALL stories
+ * parameters - none
+ * this will filter the results so that the populated field user, will not display passwords
+ * return - success (array of records), error
+ */
 router.get("/", (req, res) => {
   StoryModel.find()
     .select(selectedField)
     .populate(populateField)
+    .sort({ _id: -1 })
     .then((response) => {
       let modifiedStories = response.map(getStoryFiltered);
       res.status(200).json({ data: modifiedStories });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// GET single item
+/**
+ * Route to get a SINGLE story
+ * parameters - id (id of a single story)
+ * this will return a single result then filter the populated field user, will not display passwords
+ * return - success (a single story), error
+ */
 router.get("/:id", (req, res) => {
   StoryModel.findOne({ _id: req.params.id })
     .select(selectedField)
     .populate(populateField)
     .then((response) => {
       if (response === null) {
-        res.status(404).json({ error: "Story not found" });
+        res.status(500).json({ error: "Story not found" });
         return;
       }
 
@@ -87,45 +99,66 @@ router.get("/:id", (req, res) => {
       }
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// POST
+/**
+ * Route to post a story
+ * parameters - userid, photo, title, content
+ * this will add the story to the collection
+ * return - success (a single story), error
+ */
 router.post("/", storyValidate, (req, res) => {
   const errors = validationResult(req);
 
   if (errors.isEmpty() !== true) {
-    return res.status(422).json({ errors: errors.array() });
+    return res.status(500).json({ errors: errors.array() });
   }
 
-  let newData = new StoryModel({
-    userid: req.body.userid,
-    photo: req.body.photo,
-    title: req.body.title,
-    content: req.body.content,
-    claps: 0,
-  });
-
-  newData
-    .save()
+  UserModel.findOne({ _id: req.body.userid })
     .then((response) => {
-      return getStoryFiltered2(response);
-    })
-    .then((data) => {
-      res.status(200).json({ data });
+      if (response === undefined || response === null) {
+        return res.status(500).json({ error: "User not found!" });
+      }
+
+      let newData = new StoryModel({
+        userid: req.body.userid,
+        photo: req.body.photo,
+        title: req.body.title,
+        content: req.body.content,
+        claps: 0,
+      });
+
+      newData
+        .save()
+        .then((response) => {
+          return getStoryFiltered2(response);
+        })
+        .then((data) => {
+          res.status(200).json({ data });
+        })
+        .catch((err) => {
+          res.status(500).json({ error: err.message });
+        });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// PUT update item
+/**
+ * Route to put a SINGLE story
+ * parameters - id (id of a single story)
+ * parameters - userid, photo, title, content
+ * this will update the story with id
+ * return - success (a single filtered updated story), error
+ */
 router.put("/:id", storyValidate, (req, res) => {
   const errors = validationResult(req);
 
   if (errors.isEmpty() !== true) {
-    return res.status(422).json({ errors: errors.array() });
+    return res.status(500).json({ errors: errors.array() });
   }
 
   StoryModel.findByIdAndUpdate(req.params.id, req.body)
@@ -138,11 +171,16 @@ router.put("/:id", storyValidate, (req, res) => {
       res.status(200).json({ data });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// DELETE
+/**
+ * Route to delete a SINGLE story
+ * parameters - id (id of a single story)
+ * this will remove the story with user id
+ * return - success (ok delete!), error
+ */
 router.delete("/:id", (req, res) => {
   StoryModel.findByIdAndRemove(req.params.id)
     .select(selectedField)
@@ -151,25 +189,36 @@ router.delete("/:id", (req, res) => {
       res.status(200).json({ message: "ok delete!" });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// GET all stories by userid
+/**
+ * Route to get ALL stories by a single userid
+ * parameters - id (id of a user)
+ * this will get All stories by a single user
+ * return - success (array of records, filtered afterwards to remove sensitive fields), error
+ */
 router.get("/byuser/:id", (req, res) => {
   StoryModel.find({ userid: req.params.id })
     .select(selectedField)
     .populate(populateField)
+    .sort({ _id: -1 })
     .then((response) => {
       let modifiedStories = response.map(getStoryFiltered);
       res.status(200).json({ data: modifiedStories });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// Route to clap!
+/**
+ * Route to clap a single story
+ * parameters - id (id of a story)
+ * this will increment the claps of a story with id
+ * return - success (returns the current clap count), error
+ */
 router.post("/:id/claps", (req, res) => {
   StoryModel.findByIdAndUpdate(
     req.params.id,
@@ -180,7 +229,7 @@ router.post("/:id/claps", (req, res) => {
       res.status(200).json({ claps: response.claps });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 

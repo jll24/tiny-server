@@ -24,7 +24,6 @@ router.get("/profile/:id", (req, res) => {
 });
 
 const selectedField = "-__v -resetlink -password -createdAt -updatedAt";
-const populateField = ["followers", "following"];
 
 const forgotpasswordValidate = [
   check("email", "Must Be an Email Address")
@@ -32,7 +31,7 @@ const forgotpasswordValidate = [
     .isEmail()
     .trim()
     .escape()
-    .normalizeEmail(),
+    .normalizeEmail({ gmail_remove_dots: false }),
 ];
 
 const resetpasswordValidate = [
@@ -54,7 +53,7 @@ const loginValidate = [
     .isEmail()
     .trim()
     .escape()
-    .normalizeEmail(),
+    .normalizeEmail({ gmail_remove_dots: false }),
   check("password", "Password Must Be at Least 3 Characters")
     .notEmpty()
     .isLength({ min: 3 })
@@ -70,12 +69,13 @@ const registerValidate = [
     .notEmpty()
     .trim()
     .escape()
-    .normalizeEmail(),
+    .normalizeEmail({ gmail_remove_dots: false }),
   check("password", "Password Must Be at Least 3 Characters")
     .notEmpty()
     .isLength({ min: 3 })
     .trim()
     .escape(),
+  check("photo", "Must be photo").trim(),
 ];
 
 const getUserFiltered = (response) => {
@@ -88,6 +88,7 @@ const getUserFiltered = (response) => {
     photo,
     aboutme,
     followers,
+    following,
     googleId,
   } = response;
   return {
@@ -99,30 +100,38 @@ const getUserFiltered = (response) => {
     aboutme,
     email,
     followers,
+    following,
     googleId,
   };
 };
 
-// Route that will search for a unique userid
+/**
+ * Route to display the profile of a single user
+ * parameter - id, this is the _id field of the user who you want to display the profile
+ * return - a valid user if success, error if no user is found
+ */
 router.get("/profile/:id", (req, res) => {
   UserModel.findOne({ username: req.params.id })
     .select(selectedField)
-    .populate(populateField)
     .then((response) => {
       if (response === null) {
         return res
-          .status(404)
+          .status(500)
           .json({ error: "User with that username not found!" });
       }
 
       res.status(200).json({ data: response });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// Route that will check if an email exist
+/**
+ * Route to check if an email exists
+ * parameter - email, this is the email you want to check
+ * return - true if email exists, false if not
+ */
 router.post("/email-exists", (req, res) => {
   UserModel.findOne({ email: req.body.email })
     .then((response) => {
@@ -134,16 +143,20 @@ router.post("/email-exists", (req, res) => {
       }
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// Route that will register users
+/**
+ * Route to register users to the system
+ * parameters - firstname, lastname, username, email, password
+ * return - new user object, error otherwise
+ */
 router.post("/register", registerValidate, async (req, res) => {
   const errors = validationResult(req);
 
   if (errors.isEmpty() !== true) {
-    return res.status(422).json({ errors: errors.array() });
+    return res.status(500).json({ errors: errors.array() });
   }
 
   let hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -152,7 +165,9 @@ router.post("/register", registerValidate, async (req, res) => {
     firstname: req.body.firstname,
     lastname: req.body.lastname,
     username: req.body.username,
-    photo: "https://www.gravatar.com/avatar/1",
+    photo: req.body.photo
+      ? req.body.photo
+      : "https://www.gravatar.com/avatar/1",
     email: req.body.email,
     password: hashedPassword,
     aboutme: "",
@@ -169,16 +184,20 @@ router.post("/register", registerValidate, async (req, res) => {
       res.status(200).json({ data });
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// Route for login
+/**
+ * Route to login a user to the system
+ * parameters - email, password
+ * return - new user object, error otherwise
+ */
 router.post("/login", loginValidate, (req, res) => {
   const errors = validationResult(req);
 
   if (errors.isEmpty() !== true) {
-    return res.status(422).json({ errors: errors.array() });
+    return res.status(500).json({ errors: errors.array() });
   }
 
   let email = req.body.email;
@@ -192,23 +211,28 @@ router.post("/login", loginValidate, (req, res) => {
           const user = getUserFiltered(foundUser);
           res.status(200).json({ message: "Authentication successful", user });
         } else {
-          res.status(404).json({ error: "Authentication Failed" });
+          res.status(500).json({ error: "Authentication Failed" });
         }
       } else {
-        res.status(404).json({ error: "Email not found!" });
+        res.status(500).json({ error: "Email not found!" });
       }
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 
-// Route for forgot password
+/**
+ * Route to know your password via email
+ * parameters - email (must be a valid user)
+ * this will try to send an email to the user to reset their password
+ * return - success (email has been sent), error
+ */
 router.post("/forgotpassword", forgotpasswordValidate, (req, res) => {
   const errors = validationResult(req);
 
   if (errors.isEmpty() !== true) {
-    return res.status(422).json({ errors: errors.array() });
+    return res.status(500).json({ errors: errors.array() });
   }
 
   let { email } = req.body;
@@ -217,7 +241,7 @@ router.post("/forgotpassword", forgotpasswordValidate, (req, res) => {
     .then((user) => {
       if (user === undefined || user === null) {
         return res
-          .status(404)
+          .status(500)
           .json({ error: "User with this email does not exist." });
       }
 
@@ -241,20 +265,25 @@ router.post("/forgotpassword", forgotpasswordValidate, (req, res) => {
           });
         })
         .catch((err) => {
-          return res.status(404).json({ error: "Reset password link error!" });
+          return res.status(500).json({ error: "Reset password link error!" });
         });
     })
     .catch((err) => {
-      return res.status(404).json({ error: err.message });
+      return res.status(500).json({ error: err.message });
     });
 });
 
-// Route for reset password
+/**
+ * Route to reset your password (click the link on the email to reset the password)
+ * parameters - resetlink, newpassword
+ * this will try to reset your password in resetlink, to your newpassword
+ * return - success (your password has been changed), error
+ */
 router.post("/resetpassword", resetpasswordValidate, async (req, res) => {
   const errors = validationResult(req);
 
   if (errors.isEmpty() !== true) {
-    return res.status(422).json({ errors: errors.array() });
+    return res.status(500).json({ errors: errors.array() });
   }
 
   const { resetlink, newpassword } = req.body;
@@ -262,24 +291,24 @@ router.post("/resetpassword", resetpasswordValidate, async (req, res) => {
   let hashedPassword = await bcrypt.hash(newpassword, 10);
 
   if (resetlink === undefined || resetlink === null) {
-    return res.status(401).json({ error: "Authentication error!" });
+    return res.status(500).json({ error: "Authentication error!" });
   }
 
   jwt.verify(resetlink, process.env.RESET_PASSWORD, (err, decoded) => {
     if (err) {
-      return res.status(404).json({ error: err.message });
+      return res.status(500).json({ error: err.message });
     }
 
     UserModel.findOne({ resetlink })
       .then((user) => {
         if (user === undefined || user === null) {
           return res
-            .status(400)
+            .status(500)
             .json({ error: "User with this token does not exist!" });
         }
 
         if (user.resetlink === "") {
-          return res.status(404).json({ error: "Reset Link error." });
+          return res.status(500).json({ error: "Reset Link error." });
         }
 
         const obj = {
@@ -297,17 +326,23 @@ router.post("/resetpassword", resetpasswordValidate, async (req, res) => {
               .json({ message: "Your password has been changed!" });
           })
           .catch((err) => {
-            return res.status(400).json({ error: "Saving Reset error!" });
+            return res.status(500).json({ error: "Saving Reset error!" });
           });
       })
       .catch((err) => {
         return res
-          .status(400)
+          .status(500)
           .json({ error: "User with this token does not exist!" });
       });
   });
 });
 
+/**
+ * Route to login to your gmail account
+ * parameters - email (gmail account)
+ * this will get the email from google auth, then output it here
+ * return - success (authentication successful), error
+ */
 router.post("/login-gmail", (req, res) => {
   UserModel.findOne({ email: req.body.email })
     .then(async (foundUser) => {
@@ -319,14 +354,14 @@ router.post("/login-gmail", (req, res) => {
             .status(200)
             .json({ message: "Authentication Successfull", user: foundUser });
         } else {
-          res.status(404).json({ error: "Authentication Failed" });
+          res.status(500).json({ error: "Authentication Failed" });
         }
       } else {
-        res.status(404).json({ error: "Email not found!" });
+        res.status(500).json({ error: "Email not found!" });
       }
     })
     .catch((err) => {
-      res.status(404).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     });
 });
 

@@ -1,7 +1,14 @@
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
-sendemail = async (email, htmlmessage) => {
+/**
+ * sendemail - function to send an email message
+ * parameter - email, htmlmessage
+ * this function has no error handling capability
+ * return - none
+ */
+const sendemail = async (email, htmlmessage) => {
+  // send credentials to nodemailer
   try {
     let transport = nodemailer.createTransport({
       service: "gmail",
@@ -11,14 +18,14 @@ sendemail = async (email, htmlmessage) => {
       },
     });
 
+    // send email
     let info = await transport.sendMail({
       from: '"Project Tiny" <foo@example.com>', // sender address
       to: email, // list of receivers
-      subject: "Forgot Email", // Subject line
+      subject: "Reset Password", // Subject line
       html: htmlmessage, // html body
     });
 
-    // console log if successfull
     console.log("Message sent: %s", info.messageId);
   } catch (err) {
     console.log(err.message);

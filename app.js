@@ -15,6 +15,12 @@ app.use(bodyParser.json());
 // Use cors
 app.use(cors());
 
+// Connect to our MongoDB
+//mongoose.connect("mongodb://localhost:27017/tinydb", {
+//  useNewUrlParser: true,
+//  useUnifiedTopology: true,
+//});
+
 mongoose.connect(
   "mongodb+srv://projecttiny:hellohellohello@cluster0.jrz7x.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",
   {
@@ -29,7 +35,6 @@ const storyRouter = require("./routes/story");
 const registerRouter = require("./routes/register");
 const uploadRouter = require("./routes/upload");
 const followRouter = require("./routes/follow");
-const story = require("./models/story");
 
 // Define default endpoints for routers
 app.use("/users", userRouter);
