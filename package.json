@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "Backend files for Fullstack Project: Batch 6",
   "main": "index.js",
+  "engines": {
+    "node": "14.17.6",
+    "npm": "7.16.0"
+  },
   "scripts": {
-    "test": "nodemon app.js"
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "express",
