@@ -8,20 +8,6 @@ const { check, validationResult } = require("express-validator");
 
 const UserModel = require("../models/user");
 
-//router.use(bodyParser.json());
-
-// Route that will search for a unique userid
-router.get("/profile/:id", (req, res) => {
-  UserModel.findOne({ userid: req.params.id })
-    .select("-__v -resetlink -password")
-    .populate(["followers", "following"])
-    .then((response) => {
-      res.status(200).json({ data: response });
-    })
-    .catch((err) => {
-      res.status(404).json({ error: err.message });
-    });
-});
 
 const selectedField = "-__v -resetlink -password -createdAt -updatedAt";
 
